@@ -5,8 +5,18 @@ import openpyxl
 import pandas as pd
 
 
+def clean_numbers(val):
+    """تنسيق الأرقام لإزالة .00 للأرقام الصحيحة مع الإبقاء على الأرقام العشرية إن وجدت"""
+    if pd.isna(val):
+        return ""
+    if isinstance(val, (int, float)):
+        # إذا كان الرقم صحيحة تماماً (مثل 4.0 أو 4.00) يحوله إلى 4
+        if val == int(val):
+            return str(int(val))
+    return str(val)
+
+
 def select_files():
-    # السماح باختيار ملف واحد أو عدة ملفات معاً
     files = filedialog.askopenfilenames(
         title="اختر ملفات Excel",
         filetypes=[("Excel Files", "*.xlsx *.xls"), ("All Files", "*.*")],
@@ -29,7 +39,6 @@ def convert_files():
 
     for file_path in selected_files_list:
         try:
-            # استخراج اسم الملف بدون الامتداد وإنشاء المسار الجديد لملف TXT
             base_dir = os.path.dirname(file_path)
             file_name = os.path.splitext(os.path.basename(file_path))[0]
             output_txt_path = os.path.join(base_dir, f"{file_name}.txt")
@@ -37,10 +46,14 @@ def convert_files():
             # قراءة ملف الإكسل
             df = pd.read_excel(file_path)
 
-            # حفظ البيانات بتنسيق Tab-Separated Unicode UTF-8
+            # 1. تنظيف الأرقام لمنع ظهور .00 بالأرقام الصحيحة
+            df = df.applymap(clean_numbers)
+
+            # 2. الحفظ بترميز UTF-16 (Unicode التقليدي المطابق لإكسل والأمين)
             df.to_csv(
-                output_txt_path, sep="\t", index=False, encoding="utf-8-sig"
+                output_txt_path, sep="\t", index=False, encoding="utf-16"
             )
+
             success_count += 1
         except Exception as e:
             fail_count += 1
@@ -60,7 +73,6 @@ root.resizable(False, False)
 
 selected_files_list = []
 
-# الهيكل والواجهة
 lbl_title = tk.Label(
     root,
     text="محول ملفات Excel إلى TXT (Unicode)",
