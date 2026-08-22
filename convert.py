@@ -43,29 +43,22 @@ class ExcelToTextConverterApp:
         if not self.selected_file_path:
             return
         try:
-            # فتح ملف الإكسل وقراءة ورقة العمل الأولى النشطة فقط بنفس طريقة إكسل اليدوية
             wb = openpyxl.load_workbook(self.selected_file_path, data_only=True)
             sheet = wb.active
 
-            # اسم الملف الناتج سيكون بالضبط بنفس اسم ملف الإكسل الاصلي (مثال: البرامكة.txt)
             base_name = os.path.splitext(self.selected_file_path)[0]
             output_path = f"{base_name}.txt"
 
             with open(output_path, "w", encoding="utf-16", newline="") as f:
                 for row in sheet.iter_rows(values_only=True):
-                    # تجاهل الصفوف الفارغة بالكامل
                     if all(cell is None for cell in row):
                         continue
-                    # تحويل القيم إلى نصوص ومفصولة بـ Tab (	) بنفس تنسيق Excel بالضبط
-                    row_str = "	".join([str(cell) if cell is not None else "" for cell in row])
-                    f.write(row_str + "
-")
+                    row_str = "\t".join([str(cell) if cell is not None else "" for cell in row])
+                    f.write(row_str + "\n")
 
-            messagebox.showinfo("تم بنجاح", f"تم إنشاء ملف نصي واحد بنجاح:
-{os.path.basename(output_path)}")
+            messagebox.showinfo("تم بنجاح", f"تم إنشاء ملف نصي واحد بنجاح:\n{os.path.basename(output_path)}")
         except Exception as e:
-            messagebox.showerror("خطأ", f"حدث خطأ أثناء التحويل:
-{str(e)}")
+            messagebox.showerror("خطأ", f"حدث خطأ أثناء التحويل:\n{str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
