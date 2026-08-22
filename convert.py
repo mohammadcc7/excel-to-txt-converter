@@ -1,66 +1,103 @@
-import sys
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import openpyxl
+import pandas as pd
 
-class ExcelToTextConverterApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("محول ملفات إكسل إلى نص Unicode (.txt)")
-        self.root.geometry("500x320")
-        self.root.resizable(False, False)
-        self.setup_ui()
 
-    def setup_ui(self):
-        header_frame = tk.Frame(self.root, bg="#2b579a", height=60)
-        header_frame.pack(fill=tk.X)
-        lbl_title = tk.Label(header_frame, text="محول ملفات Excel إلى TXT (Unicode)", fg="white", bg="#2b579a", font=("Segoe UI", 14, "bold"))
-        lbl_title.pack(pady=15)
+def select_files():
+    # السماح باختيار ملف واحد أو عدة ملفات معاً
+    files = filedialog.askopenfilenames(
+        title="اختر ملفات Excel",
+        filetypes=[("Excel Files", "*.xlsx *.xls"), ("All Files", "*.*")],
+    )
+    if files:
+        selected_files_list.clear()
+        selected_files_list.extend(files)
+        lbl_status.config(
+            text=f"تم تحديد {len(files)} ملف/ملفات", fg="#000000"
+        )
 
-        main_frame = tk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        self.lbl_file = tk.Label(main_frame, text="لم يتم اختيار أي ملف إكسل بعد", font=("Segoe UI", 10), fg="#555555", wraplength=440, justify="center")
-        self.lbl_file.pack(pady=(10, 15))
+def convert_files():
+    if not selected_files_list:
+        messagebox.showwarning("تنبيه", "الرجاء اختيار ملفات Excel أولاً!")
+        return
 
-        btn_select = tk.Button(main_frame, text="اختيار ملف Excel (.xlsx / .xls)", command=self.select_file, font=("Segoe UI", 10, "bold"), bg="#107c41", fg="white", padx=15, pady=8, relief=tk.FLAT, cursor="hand2")
-        btn_select.pack()
+    success_count = 0
+    fail_count = 0
 
-        self.btn_convert = tk.Button(main_frame, text="تحويل إلى ملف نصي TXT واحد (Unicode)", command=self.convert_file, font=("Segoe UI", 11, "bold"), bg="#2b579a", fg="white", padx=15, pady=8, relief=tk.FLAT, state=tk.DISABLED, cursor="hand2")
-        self.btn_convert.pack(pady=(20, 0))
-
-        self.selected_file_path = None
-
-    def select_file(self):
-        file_path = filedialog.askopenfilename(title="اختر ملف إكسل", filetypes=[("Excel Files", "*.xlsx *.xls")])
-        if file_path:
-            self.selected_file_path = file_path
-            self.lbl_file.config(text=f"الملف المحدد: {os.path.basename(file_path)}", fg="#000000")
-            self.btn_convert.config(state=tk.NORMAL, bg="#2b579a")
-
-    def convert_file(self):
-        if not self.selected_file_path:
-            return
+    for file_path in selected_files_list:
         try:
-            wb = openpyxl.load_workbook(self.selected_file_path, data_only=True)
-            sheet = wb.active
+            # استخراج اسم الملف بدون الامتداد وإنشاء المسار الجديد لملف TXT
+            base_dir = os.path.dirname(file_path)
+            file_name = os.path.splitext(os.path.basename(file_path))[0]
+            output_txt_path = os.path.join(base_dir, f"{file_name}.txt")
 
-            base_name = os.path.splitext(self.selected_file_path)[0]
-            output_path = f"{base_name}.txt"
+            # قراءة ملف الإكسل
+            df = pd.read_excel(file_path)
 
-            with open(output_path, "w", encoding="utf-16", newline="") as f:
-                for row in sheet.iter_rows(values_only=True):
-                    if all(cell is None for cell in row):
-                        continue
-                    row_str = "\t".join([str(cell) if cell is not None else "" for cell in row])
-                    f.write(row_str + "\n")
-
-            messagebox.showinfo("تم بنجاح", f"تم إنشاء ملف نصي واحد بنجاح:\n{os.path.basename(output_path)}")
+            # حفظ البيانات بتنسيق Tab-Separated Unicode UTF-8
+            df.to_csv(
+                output_txt_path, sep="\t", index=False, encoding="utf-8-sig"
+            )
+            success_count += 1
         except Exception as e:
-            messagebox.showerror("خطأ", f"حدث خطأ أثناء التحويل:\n{str(e)}")
+            fail_count += 1
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = ExcelToTextConverterApp(root)
-    root.mainloop()
+    messagebox.showinfo(
+        "تمت العملية",
+        f"تم تحويل {success_count} ملف بنجاح!\nفشل: {fail_count}",
+    )
+    lbl_status.config(text="اكتملت عملية التحويل", fg="green")
+
+
+# إعداد النافذة الرئيسية
+root = tk.Tk()
+root.title("محول ملفات Excel إلى TXT (Unicode)")
+root.geometry("450x300")
+root.resizable(False, False)
+
+selected_files_list = []
+
+# الهيكل والواجهة
+lbl_title = tk.Label(
+    root,
+    text="محول ملفات Excel إلى TXT (Unicode)",
+    font=("Arial", 14, "bold"),
+    bg="#2B579A",
+    fg="white",
+    pady=10,
+)
+lbl_title.pack(fill=tk.X)
+
+btn_select = tk.Button(
+    root,
+    text="اختر ملفات Excel (واحدة أو أكثر)",
+    font=("Arial", 11, "bold"),
+    bg="#28a745",
+    fg="white",
+    command=select_files,
+    padx=10,
+    pady=5,
+)
+btn_select.pack(pady=20)
+
+lbl_status = tk.Label(
+    root, text="لم يتم اختيار أي ملف", font=("Arial", 10), fg="gray"
+)
+lbl_status.pack(pady=5)
+
+btn_convert = tk.Button(
+    root,
+    text="تحويل الملفات إلى TXT (Unicode)",
+    font=("Arial", 11, "bold"),
+    bg="#007bff",
+    fg="white",
+    command=convert_files,
+    padx=10,
+    pady=5,
+)
+btn_convert.pack(pady=15)
+
+root.mainloop()
